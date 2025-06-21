@@ -9,7 +9,7 @@ extern PIO pio;
 extern uint sm;
 
 // Atualiza a matriz de LEDs conforme o nível do tanque
-void matriz_atualizar_tanque(uint16_t valor_lido, uint16_t valor_maximo);
+void matriz_atualizar_tanque(uint16_t nivel_percentual, uint16_t max_percentual);
 
 // Inicializa a matriz de LEDs
 void init_matriz(void);

@@ -30,12 +30,10 @@ uint32_t matrix_grb(double b, double r, double g) {
 }
 
 // Função para atualizar a matriz conforme o nível do tanque
-void matriz_atualizar_tanque(uint16_t valor_lido, uint16_t valor_maximo) {
-    // Calcula o percentual do tanque cheio (0.0 a 1.0)
-    float percentual = (float)valor_lido / (float)valor_maximo;
+void matriz_atualizar_tanque(uint16_t nivel_percentual, uint16_t max_percentual) {
+    float percentual = (float)nivel_percentual / (float)max_percentual;
     if (percentual > 1.0f) percentual = 1.0f;
 
-    // Determina o nível (1 a 4) de acordo com o percentual
     uint8_t nivel = 0;
     if (percentual >= 1.0f) nivel = 4;
     else if (percentual >= 0.75f) nivel = 3;

@@ -10,6 +10,9 @@
 #include "matriz.h" // Biblioteca para controle da matriz de LEDs
 #include "potenciometro.h" // Biblioteca para controle do potenciômetro
 #include "web.h" // Biblioteca para controle da interface web
+#include "rgb.h" // Biblioteca para controle do Led RGB
+#include "buzzer.h" // Biblioteca para controle do buzzer
+
 
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
 #define WIFI_SSID "SEU_SSID"

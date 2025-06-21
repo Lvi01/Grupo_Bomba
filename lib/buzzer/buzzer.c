@@ -1,6 +1,6 @@
 #include "pico/stdlib.h"
 #include "hardware/pwm.h"
-#include "lib/buzzer.h"
+#include "buzzer.h"
 
 #define BUZZER_PIN 10
 

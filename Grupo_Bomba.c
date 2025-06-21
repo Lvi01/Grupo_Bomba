@@ -12,7 +12,7 @@
 
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
 int limite_maximo = 100;
-int limite_minimo = 30;
+int limite_minimo = 10;
 
 volatile bool seguranca_ativa = false; 
 volatile bool enchendo = false; // Estado da bomba: true para enchendo

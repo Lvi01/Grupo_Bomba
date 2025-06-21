@@ -30,6 +30,7 @@ add_executable(${PROJECT_NAME}
         lib/botoes/botoes.c
         lib/matriz/matriz.c
         lib/potenciometro/potenciometro.c
+        lib/web/web.c
         )
 
 pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/lib/matriz/matriz.pio)
@@ -46,6 +47,7 @@ target_include_directories(${PROJECT_NAME}  PRIVATE   ${CMAKE_CURRENT_LIST_DIR}
         lib/botoes
         lib/matriz
         lib/potenciometro
+        lib/web
         )
 
 pico_enable_stdio_usb(${PROJECT_NAME} 1)

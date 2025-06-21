@@ -1,4 +1,5 @@
-#include "matriz.pio.h"
+#include "matriz.h"
+#include "build/matriz.pio.h"
 
 #define NUM_LEDS 25 // Total de LEDs na matriz 5x5
 #define LED_MATRIX 7 // GPIO 7 para a matriz de LEDs

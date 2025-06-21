@@ -1,5 +1,6 @@
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
+#include "potenciometro.h"
 
 #define ADC_PIN 28  // GPIO compartilhada com o microfone na BitDogLab.
 
@@ -13,7 +14,7 @@ void init_potenciometro(void) {
 }
 
 // Lê e retorna o valor atual do potenciômetro (ex: 0~4095)
-float read_potenciometro(void) {
+uint16_t read_potenciometro(void) {
     adc_value_x = adc_read();
     return adc_value_x;  // Retorna o valor lido do ADC
 }

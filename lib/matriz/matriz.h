@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "hardware/pio.h"
+#include "hardware/clocks.h"
 
 // Externas para uso em outros arquivos, se necessário
 extern PIO pio;

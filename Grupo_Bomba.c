@@ -1,20 +1,29 @@
-#include "pico/cyw43_arch.h"
+#include <stdio.h>
 #include "pico/stdlib.h"
-#include "lwip/tcp.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
 #include <stdio.h>
 
-#define WIFI_SSID "SSID_WIFI"
-#define WIFI_PASS "SENHA_WIFI"
-#define NIVEL_AGUA 26 // Pino ADC para o nível de água (ALTERAR CONFORME NECESSÁRIO)
+#include "pico/cyw43_arch.h"
+#include "lwip/tcp.h"
 
+#include "botoes.h" // Biblioteca para controle dos botões
+#include "ssd1306.h" // Biblioteca para controle do display OLED -- FUNCIONALIDADE NÃO IMPLEMENTADA
+#include "matriz.pio.h" // Programa PIO para a matriz de LEDs
+#include "matriz.h" // Biblioteca para controle da matriz de LEDs
+#include "potenciometro.h" // Biblioteca para controle do potenciômetro
+
+// --- DEFINES E VARIÁVEIS GLOBAIS ---
 int limite_maximo = 100;
 int limite_minimo = 10;
 
-bool volatile enchendo = false; // Estado da bomba: true para enchendo, false para esvaziando
-bool volatile bomba_ligada = false; // Estado da bomba: true para ligada, false para desligada
-int nivel_agua = 0; // Nível de água atual (0-100)
+volatile bool seguranca_ativa = false; 
+volatile bool enchendo = false; // Estado da bomba: true para enchendo
+volatile bool esvaziando = false; // Estado da bomba: true para esvaziando
+volatile bool bomba_ligada = false; // Estado da bomba: true para ligada, false para desligada
+
+#define WIFI_SSID "SSID_WIFI"
+#define WIFI_PASS "SENHA_WIFI"
 
 // HTML da interface web
 const char HTML_BODY[] =
@@ -59,16 +68,26 @@ struct http_state {
     size_t sent;
 };
 
+absolute_time_t ultima_troca = {0};
 
-// Protótipos das funções
+// --- ASSINATURA DAS FUNÇÕES ---
+void gpio_irq_handler(uint gpio, uint32_t events);
+void seguranca_enchimento_automatico(void);
 static err_t http_sent(void *arg, struct tcp_pcb *tpcb, u16_t len);
 static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 static err_t connection_callback(void *arg, struct tcp_pcb *newpcb, err_t err);
 static void start_http_server(void);
 
-// FUNÇÃO PRINCIPAL
-int main() {
+// --- FUNÇÃO PRINCIPAL ---
+int main()
+{
     stdio_init_all();
+    init_botoes();
+    init_matriz();
+    init_potenciometro();
+
+    gpio_set_irq_enabled_with_callback(BOTAO_5, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
+    gpio_set_irq_enabled_with_callback(BOTAO_6, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 
     adc_init();
     adc_gpio_init(NIVEL_AGUA);
@@ -99,6 +118,15 @@ int main() {
     start_http_server();
 
     while (true) {
+  
+        read_potenciometro(); // Atualiza adc_value_x
+        seguranca_enchimento_automatico();
+        matriz_atualizar_tanque(adc_value_x, limite_maximo);
+
+        printf("ADC Value: %d, Enchendo: %d, Esvaziando: %d, Bomba Ligada: %d\n",
+               adc_value_x, enchendo, esvaziando, bomba_ligada);
+        // Outras lógicas do loop principal...
+
         cyw43_arch_poll();
 
         // ALTERAR COM A PORTA CORRESPONDENTE AO ADC
@@ -112,11 +140,11 @@ int main() {
         
         printf("[DEBUG] Nível de água: %d\n", nivel_agua);
         sleep_ms(500);
-    }
+   }
 
     cyw43_arch_deinit();
     return 0;
-}
+ }
 
 static err_t http_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
     struct http_state *hs = (struct http_state *)arg;
@@ -142,6 +170,53 @@ static err_t http_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
         tcp_close(tpcb);
         return ERR_MEM;
     }
+}
+
+// --- IMPLEMENTAÇÃO DAS FUNÇÕES ---
+
+// Handler de interrupção dos botões
+void gpio_irq_handler(uint gpio, uint32_t events) {
+    if (seguranca_ativa) {
+        // Ignora interrupções enquanto a segurança está ativa
+        return;
+    }
+    absolute_time_t agora = get_absolute_time();
+    if (absolute_time_diff_us(ultima_troca, agora) > 200000) {
+        // Controle para ENCHER: só permite se não estiver esvaziando e não atingiu o nível máximo
+        if (gpio == BOTAO_5 && !esvaziando && adc_value_x < limite_maximo) {
+            gerar_onda_A();
+            enchendo = !enchendo;
+            bomba_ligada = !bomba_ligada;
+            ultima_troca = agora;
+        }
+        // Controle para ESVAZIAR: só permite se não estiver enchendo e não atingiu o nível mínimo
+        else if (gpio == BOTAO_6 && !enchendo && adc_value_x > limite_minimo) {
+            gerar_onda_B();
+            esvaziando = !esvaziando;
+            bomba_ligada = !bomba_ligada;
+            ultima_troca = agora;
+        }
+        // Se não pode acionar, apenas ignora o comando
+    }
+}
+
+// Função de segurança: enche automaticamente se o nível cair abaixo do mínimo
+void seguranca_enchimento_automatico(void) {
+    if (adc_value_x < limite_minimo && !enchendo) {
+        enchendo = true;
+        bomba_ligada = true;
+        seguranca_ativa = true;
+        gerar_onda_A(); // Liga a bomba
+    }
+    // Para a bomba quando atingir o mínimo desejado
+    else if (adc_value_x >= limite_minimo && enchendo) {
+        enchendo = false;
+        bomba_ligada = false;
+        seguranca_ativa = false;
+        gerar_onda_A(); // Desliga a bomba
+
+    }
+}
     hs->sent = 0;
 
     if (strstr(req, "GET /status")) {

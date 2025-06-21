@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Controle Nível Água</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 10px;
+            background: #e6e1e1;
+        }
+        
+        .bar {
+            width: 50%;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 auto 15px;
+            height: 40px;
+        }
+        
+        .fill {
+            height: 100%;
+            transition: width .3s;
+        }
+        
+        #agua {
+            background: #2196F3;
+        }
+        
+        .lbl {
+            font-weight: bold;
+            font-size: 16px;
+            margin: 15px 0 5px;
+            display: block;
+        }
+        
+        .sec {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .box {
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.1);
+            min-width: 150px;
+        }
+        
+        .box-info {
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.1);
+            min-width: 200px;
+        }
+        
+        .inp {
+            padding: 6px 8px;
+            font-size: 14px;
+            width: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        
+        .btn {
+            background: #2196F3;
+            color: #fff;
+            padding: 8px 16px;
+            font-size: 14px;
+            border: 0;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        .max {
+            background: #f44336;
+        }
+        
+        .min {
+            background: #4CAF50;
+        }
+
+    </style>
+    <script>
+        var cMin = 10, cMax = 100;
+        
+        function setMax() {
+            var e = document.getElementById('lmax'), v = +e.value;
+            if (v <= cMin || v > 100) {
+                alert('Máximo deve ser entre ' + (cMin + 1) + ' e 100');
+                return;
+            }
+            fetch('/config/set_limitMax/' + v);
+            e.value = '';
+        }
+        
+        function setMin() {
+            var e = document.getElementById('lmin'), v = +e.value;
+            if (v >= cMax || v < 0) {
+                alert('Mínimo deve ser entre 0 e ' + (cMax - 1));
+                return;
+            }
+            fetch('/config/set_limitMin/' + v);
+            e.value = '';
+        }
+        
+        function update() {
+            fetch('/status').then(r => r.json()).then(d => {
+                document.getElementById('estado').innerText = d.bomba_ligada ? (d.estado ? 'Enchendo' : 'Esvaziando') : 'Parada';
+                document.getElementById('nivel').innerText = d.nivel_agua + ' %';
+                document.getElementById('vol').innerText = (d.nivel_agua / 100 * 5).toFixed(2) + ' L';
+                document.getElementById('agua').style.width = d.nivel_agua + '%';
+                document.getElementById('vmax').innerText = d.limite_max + ' %';
+                document.getElementById('vmin').innerText = d.limite_min + ' %';
+                cMax = d.limite_max;
+                cMin = d.limite_min;
+            });
+        }
+        
+        setInterval(update, 500);
+    </script>
+</head>
+<body>
+    <h1>Controle de Nível de água com Interface Web</h1>
+    <p>Estado da bomba: <span id="estado">--</span></p>
+    <p class="lbl">Nível de água: <span id="nivel">--</span> / Volume: <span id="vol">--</span></p>
+    <div class="bar">
+        <div id="agua" class="fill"></div>
+    </div>
+    <hr>
+    <div class="sec">
+        <div class="box">
+            <p class="lbl">Definir Limite Máximo:</p>
+            <input type="number" id="lmax" min="1" max="100" class="inp" placeholder="> Mínimo">
+            <button class="btn max" onclick="setMax()">Definir Máximo</button>
+        </div>
+        <div class="box-info">
+            <p class="lbl">Limite Máximo: <span id="vmax">--</span></p>
+            <p class="lbl">Limite Mínimo: <span id="vmin">--</span></p>
+        </div>
+        <div class="box">
+            <p class="lbl">Definir Limite Mínimo:</p>
+            <input type="number" id="lmin" min="0" max="99" class="inp" placeholder="< Máximo">
+            <button class="btn min" onclick="setMin()">Definir Mínimo</button>
+        </div>
+    </div>
+</body>
+</html>

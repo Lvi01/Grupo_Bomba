@@ -7,7 +7,6 @@
 
 #include "botoes.h" // Biblioteca para controle dos botões
 #include "ssd1306.h" // Biblioteca para controle do display OLED -- FUNCIONALIDADE NÃO IMPLEMENTADA
-#include "matriz.pio.h" // Programa PIO para a matriz de LEDs
 #include "matriz.h" // Biblioteca para controle da matriz de LEDs
 #include "potenciometro.h" // Biblioteca para controle do potenciômetro
 

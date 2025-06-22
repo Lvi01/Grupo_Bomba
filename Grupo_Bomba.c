@@ -40,6 +40,8 @@ int main() {
     init_botoes();
     init_matriz();
     init_potenciometro();
+    configurar_leds();
+    configurar_buzzer();
 
     gpio_set_irq_enabled_with_callback(BOTAO_5, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     gpio_set_irq_enabled_with_callback(BOTAO_6, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
@@ -82,6 +84,27 @@ int main() {
             
         printf("[DEBUG] Nível de água: %d\n", nivel_agua);
         sleep_ms(500);
+            if (nivel_agua < limite_minimo) {
+            set_rgb(true, false, false);
+            tocar_buzzer_alerta();
+            enchendo = true;
+            esvaziando = false;
+        }
+        else if (nivel_agua > limite_maximo) {
+            set_rgb(true, false, false);
+            tocar_buzzer_alerta();
+            enchendo = false;
+            esvaziando = true;
+        }
+        else if (enchendo || esvaziando) {
+            piscar_amarelo_com_bipe(); 
+        }
+        else {
+            set_rgb(false, true, false);
+            parar_buzzer();
+        }
+
+        sleep_ms(300);
     }
 
     cyw43_arch_deinit();

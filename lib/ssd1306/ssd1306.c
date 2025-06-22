@@ -7,6 +7,7 @@
 #define ENDERECO 0x3C 
 
 
+
 void init_display(ssd1306_t *ssd){
   // Inicialização do display
     i2c_init(I2C_PORT, 400 * 1000);
@@ -18,6 +19,7 @@ void init_display(ssd1306_t *ssd){
     ssd1306_config(ssd);
     ssd1306_send_data(ssd);
 }
+
 void ssd1306_init(ssd1306_t *ssd, uint8_t width, uint8_t height, bool external_vcc, uint8_t address, i2c_inst_t *i2c) {
   ssd->width = width;
   ssd->height = height;

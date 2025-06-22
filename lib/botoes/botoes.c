@@ -42,6 +42,10 @@ void init_botoes(void) {
     gpio_set_dir(BOTAO_6, GPIO_IN);
     gpio_pull_up(BOTAO_6);
 
+    gpio_init(BOTAO_JOYSTICK);
+    gpio_set_dir(BOTAO_JOYSTICK, GPIO_IN);
+    gpio_pull_up(BOTAO_JOYSTICK);
+
     gpio_init(RELE_16);
     gpio_set_dir(RELE_16, GPIO_OUT);
     gpio_put(RELE_16, 1);

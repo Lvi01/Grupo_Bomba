@@ -27,11 +27,13 @@ volatile bool enchendo = false; // Estado da bomba: true para enchendo
 volatile bool esvaziando = false; // Estado da bomba: true para esvaziando
 volatile bool bomba_ligada = false; // Estado da bomba: true para ligada, false para desligada
 int nivel_agua; // Variável global para armazenar o nível de água
+volatile bool modo=1; // Variavel para alternar o display entre informações do tanque e bomba e da conexão remota
 
 
 // --- ASSINATURA DAS FUNÇÕES ---
 void gpio_irq_handler(uint gpio, uint32_t events);
 void seguranca_enchimento_automatico(void);
+void info_display(bool modo, char ip_str[]);
 
 // FUNÇÃO PRINCIPAL
 int main() {
@@ -45,6 +47,7 @@ int main() {
 
     gpio_set_irq_enabled_with_callback(BOTAO_5, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     gpio_set_irq_enabled_with_callback(BOTAO_6, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
+    gpio_set_irq_enabled_with_callback(BOTAO_JOYSTICK, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 
     // Inicialização e configuração do Wi-Fi
     if (cyw43_arch_init()) {
@@ -71,13 +74,6 @@ int main() {
 
     init_web(); // Inicializa o servidor web
     init_display(&ssd); // Inicializa o display
-
-    ssd1306_fill(&ssd, 0);
-
-    ssd1306_draw_string(&ssd, "BOMBA      OFF", 5, 8);
-    ssd1306_draw_string(&ssd, "NIVEL         ", 5, 24);
-
-    ssd1306_send_data(&ssd);
 
     while (true) {
         read_potenciometro(); // Atualiza adc_value_x
@@ -111,22 +107,7 @@ int main() {
             set_rgb(false, true, false);
             parar_buzzer();
         }
-
-        char bomba_string[15];
-        char nivel_string[15];
-
-        if (bomba_ligada){
-            sprintf(bomba_string, "BOMBA       ON");
-        }
-        else{
-            sprintf(bomba_string, "BOMBA      OFF");
-        }
-
-        sprintf(nivel_string, "NIVEL     %3d%%", nivel_agua);
-        ssd1306_fill(&ssd, 0);
-        ssd1306_draw_string(&ssd, bomba_string, 5, 8);
-        ssd1306_draw_string(&ssd, nivel_string, 5, 24);
-        ssd1306_send_data(&ssd);
+        info_display(modo, ip_str);
 
         sleep_ms(300);
     }
@@ -146,6 +127,10 @@ void gpio_irq_handler(uint gpio, uint32_t events) {
     absolute_time_t agora = get_absolute_time();
     if (absolute_time_diff_us(ultima_troca, agora) > 200000) {
         // Controle para ENCHER: só permite se não estiver esvaziando e não atingiu o nível máximo
+        if (gpio == BOTAO_JOYSTICK){ // Alterna modo do display
+            modo = !modo;
+            ultima_troca = agora;
+        } 
         if (gpio == BOTAO_5 && !esvaziando && nivel_agua < limite_maximo) {
             gerar_onda_A();
             enchendo = !enchendo;
@@ -178,4 +163,34 @@ void seguranca_enchimento_automatico(void) {
         seguranca_ativa = false;
         gerar_onda_A(); // Desliga a bomba
     }
+}
+
+void info_display(bool modo, char ip_str[]){
+
+    if (modo == 0){ // Infos da bomba
+        char bomba_string[15];
+        char nivel_string[15];
+        char litros_string[15];
+        if (bomba_ligada){
+            sprintf(bomba_string, "BOMBA       ON");
+        }
+        else{
+            sprintf(bomba_string, "BOMBA      OFF");
+        }
+
+        sprintf(nivel_string, "NIVEL     %3d%%", nivel_agua);
+        sprintf(litros_string, "%d/5000 ml", nivel_agua*50);
+        ssd1306_fill(&ssd, 0);
+        ssd1306_draw_string(&ssd, bomba_string, 5, 8);
+        ssd1306_draw_string(&ssd, nivel_string, 5, 24);
+        ssd1306_draw_string(&ssd, litros_string, 5, 40);
+        ssd1306_send_data(&ssd);
+    }
+    else { // Infos do wifi
+        ssd1306_fill(&ssd, 0);
+        ssd1306_draw_string(&ssd, "WIFI ON", 5, 32);
+        ssd1306_draw_string(&ssd, ip_str, 5, 40);
+        ssd1306_send_data(&ssd);
+    }
+
 }

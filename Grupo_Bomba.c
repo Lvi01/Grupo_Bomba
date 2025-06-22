@@ -15,13 +15,13 @@
 
 
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
-#define WIFI_SSID "SEU_SSID"
-#define WIFI_PASS "SUA_SENHA"
+#define WIFI_SSID "SSID"
+#define WIFI_PASS "SENHA"
 
 int limite_maximo = 100;
 int limite_minimo = 10;
 absolute_time_t ultima_troca = {0};
-
+ssd1306_t ssd;
 volatile bool seguranca_ativa = false; 
 volatile bool enchendo = false; // Estado da bomba: true para enchendo
 volatile bool esvaziando = false; // Estado da bomba: true para esvaziando
@@ -70,6 +70,14 @@ int main() {
     printf("WiFi => Conectado com sucesso!\n IP: %s\n", ip_str);
 
     init_web(); // Inicializa o servidor web
+    init_display(&ssd); // Inicializa o display
+
+    ssd1306_fill(&ssd, 0);
+
+    ssd1306_draw_string(&ssd, "BOMBA      OFF", 5, 8);
+    ssd1306_draw_string(&ssd, "NIVEL         ", 5, 24);
+
+    ssd1306_send_data(&ssd);
 
     while (true) {
         read_potenciometro(); // Atualiza adc_value_x
@@ -103,6 +111,22 @@ int main() {
             set_rgb(false, true, false);
             parar_buzzer();
         }
+
+        char bomba_string[15];
+        char nivel_string[15];
+
+        if (bomba_ligada){
+            sprintf(bomba_string, "BOMBA       ON");
+        }
+        else{
+            sprintf(bomba_string, "BOMBA      OFF");
+        }
+
+        sprintf(nivel_string, "NIVEL     %3d%%", nivel_agua);
+        ssd1306_fill(&ssd, 0);
+        ssd1306_draw_string(&ssd, bomba_string, 5, 8);
+        ssd1306_draw_string(&ssd, nivel_string, 5, 24);
+        ssd1306_send_data(&ssd);
 
         sleep_ms(300);
     }

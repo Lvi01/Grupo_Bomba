@@ -38,7 +38,7 @@ void ssd1306_init(ssd1306_t *ssd, uint8_t width, uint8_t height, bool external_v
 void ssd1306_config(ssd1306_t *ssd);
 void ssd1306_command(ssd1306_t *ssd, uint8_t command);
 void ssd1306_send_data(ssd1306_t *ssd);
-
+void init_display(ssd1306_t *ssd);
 void ssd1306_pixel(ssd1306_t *ssd, uint8_t x, uint8_t y, bool value);
 void ssd1306_fill(ssd1306_t *ssd, bool value);
 void ssd1306_rect(ssd1306_t *ssd, uint8_t top, uint8_t left, uint8_t width, uint8_t height, bool value, bool fill);

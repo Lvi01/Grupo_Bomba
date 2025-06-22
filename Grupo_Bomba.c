@@ -75,6 +75,7 @@ int main() {
     ssd1306_fill(&ssd, 0);
 
     ssd1306_draw_string(&ssd, "BOMBA      OFF", 5, 8);
+    ssd1306_draw_string(&ssd, "NIVEL         ", 5, 24);
 
     ssd1306_send_data(&ssd);
 
@@ -112,13 +113,19 @@ int main() {
         }
 
         char bomba_string[15];
+        char nivel_string[15];
+
         if (bomba_ligada){
             sprintf(bomba_string, "BOMBA       ON");
         }
         else{
             sprintf(bomba_string, "BOMBA      OFF");
         }
+
+        sprintf(nivel_string, "NIVEL     %3d%%", nivel_agua);
+        ssd1306_fill(&ssd, 0);
         ssd1306_draw_string(&ssd, bomba_string, 5, 8);
+        ssd1306_draw_string(&ssd, nivel_string, 5, 24);
         ssd1306_send_data(&ssd);
 
         sleep_ms(300);

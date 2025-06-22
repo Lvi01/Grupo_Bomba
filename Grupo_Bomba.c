@@ -15,8 +15,8 @@
 
 
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
-#define WIFI_SSID "RODRIGO "
-#define WIFI_PASS "05131620"
+#define WIFI_SSID "SSID"
+#define WIFI_PASS "SENHA"
 
 int limite_maximo = 100;
 int limite_minimo = 10;

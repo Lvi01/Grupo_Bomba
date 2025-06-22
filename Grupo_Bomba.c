@@ -170,6 +170,7 @@ void info_display(bool modo, char ip_str[]){
     if (modo == 0){ // Infos da bomba
         char bomba_string[15];
         char nivel_string[15];
+        char litros_string[15];
         if (bomba_ligada){
             sprintf(bomba_string, "BOMBA       ON");
         }
@@ -178,9 +179,11 @@ void info_display(bool modo, char ip_str[]){
         }
 
         sprintf(nivel_string, "NIVEL     %3d%%", nivel_agua);
+        sprintf(litros_string, "%d/5000 ml", nivel_agua*50);
         ssd1306_fill(&ssd, 0);
         ssd1306_draw_string(&ssd, bomba_string, 5, 8);
         ssd1306_draw_string(&ssd, nivel_string, 5, 24);
+        ssd1306_draw_string(&ssd, litros_string, 5, 40);
         ssd1306_send_data(&ssd);
     }
     else { // Infos do wifi

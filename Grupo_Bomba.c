@@ -215,32 +215,30 @@ void info_display(bool modo_display, char ip_str[]) {
         ssd1306_line(&ssd, 3, 25, 123, 25, cor); // Linha superior
         ssd1306_line(&ssd, 3, 37, 123, 37, cor); // Linha intermediária
 
-        // Linhas verticais para separar colunas
-        ssd1306_line(&ssd, 23, 38, 23, 60, cor); // Entre status e nível
-        ssd1306_line(&ssd, 85, 38, 85, 60, cor); // Entre nível e litros
+        // Linha vertical para separar as duas colunas inferiores
+        ssd1306_line(&ssd, 63, 38, 63, 60, cor);
 
         // Título centralizado
         ssd1306_draw_string(&ssd, "CEPEDI  TIC37", 8, 6);
         ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16);
 
-        // Status da bomba (centralizado na primeira coluna)
+        // Estado da bomba centralizado na linha do meio
         if (bomba_ligada) {
-            snprintf(buffer, sizeof(buffer), "ON");
+            snprintf(buffer, sizeof(buffer), "BOMBA - ON ");
         } else {
-            snprintf(buffer, sizeof(buffer), "OFF");
+            snprintf(buffer, sizeof(buffer), "BOMBA - OFF");
         }
-        ssd1306_draw_string(&ssd, " BOMBA - ", 10, 28);
-        ssd1306_draw_string(&ssd, buffer, 10, 65);
+        ssd1306_draw_string(&ssd, buffer, 20, 28);
 
-        // Nível em % (centralizado na segunda coluna)
+        // Nível em % (coluna esquerda)
         snprintf(buffer, sizeof(buffer), "%3d%%", nivel_agua);
-        ssd1306_draw_string(&ssd, "NIVEL", 35, 45);
-        ssd1306_draw_string(&ssd, buffer, 40, 53);
+        ssd1306_draw_string(&ssd, "NIVEL", 17, 40);
+        ssd1306_draw_string(&ssd, buffer, 15, 53);
 
-        // Volume em ml (centralizado na terceira coluna)
+        // Volume em ml (coluna direita)
         snprintf(buffer, sizeof(buffer), "%dml", nivel_agua * (CAPACIDADE_TANQUE_ML / 100));
-        ssd1306_draw_string(&ssd, "VOLUME", 90, 45);
-        ssd1306_draw_string(&ssd, buffer, 95, 53);
+        ssd1306_draw_string(&ssd, "VOLUME", 69, 40);
+        ssd1306_draw_string(&ssd, buffer, 70, 53);
 
         ssd1306_send_data(&ssd);
     }

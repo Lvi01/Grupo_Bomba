@@ -14,8 +14,8 @@
 #include "buzzer.h"
 
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
-#define WIFI_SSID           "Casa1"
-#define WIFI_PASS           "40302010"
+#define WIFI_SSID           "Gama"
+#define WIFI_PASS           "pati2081"
 #define NIVEL_MAXIMO        100
 #define NIVEL_MINIMO        10
 #define CAPACIDADE_TANQUE_ML 5000
@@ -251,14 +251,12 @@ void info_display(bool modo_display, char ip_str[]) {
         ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);      // Desenha um retângulo
         ssd1306_line(&ssd, 3, 25, 123, 25, cor);           // Desenha uma linha
         ssd1306_line(&ssd, 3, 37, 123, 37, cor);           // Desenha uma linha
-        ssd1306_line(&ssd, 23, 38, 23, 60, cor);           // Desenha uma linha vertical
 
         ssd1306_draw_string(&ssd, "CEPEDI  TIC37", 8, 6);
         ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16);
-        ssd1306_draw_string(&ssd, "  WIFI - ON", 10, 28);
-        ssd1306_draw_string(&ssd, "IP", 5, 45);
+        ssd1306_draw_string(&ssd, "WIFI - ON - IP", 7, 28);
         snprintf(buffer, sizeof(buffer), "%s", ip_str);
-        ssd1306_draw_string(&ssd, buffer, 26, 45);
+        ssd1306_draw_string(&ssd, buffer, 11, 45);
 
         ssd1306_send_data(&ssd);    // Envia os dados para o display OLED
     }

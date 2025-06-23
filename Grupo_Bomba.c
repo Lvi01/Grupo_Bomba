@@ -96,8 +96,21 @@ void inicializar_perifericos(void) {
  */
 void atualizar_nivel_agua(void) {
     read_potenciometro();
-    nivel_agua = adc_value_x;
-    nivel_agua = (nivel_agua * 100) / 4095;
+    // Converte o valor ADC para porcentagem
+    int adc_percent = (adc_value_x * 100) / 4095;
+
+    // Define os limites físicos do potenciômetro
+    const int ADC_MIN = 60; // Cheio (100%)
+    const int ADC_MAX = 81; // Vazio (0%)
+
+    if (adc_percent >= ADC_MAX) {
+        nivel_agua = 0; // Vazio
+    } else if (adc_percent <= ADC_MIN) {
+        nivel_agua = 100; // Cheio
+    } else {
+        // Mapeia linearmente a faixa [ADC_MAX, ADC_MIN] para [0, 100]
+        nivel_agua = ((ADC_MAX - adc_percent) * 100) / (ADC_MAX - ADC_MIN);
+    }
 }
 
 /**

@@ -3,6 +3,36 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern int limite_minimo;
+extern int limite_maximo;
+
+int inicializar_wifi(char *ip_str ,char *WIFI_SSID, char *WIFI_PASS) {
+    // Inicialização e configuração do Wi-Fi
+    if (cyw43_arch_init()) {
+        printf("WiFi => FALHA\n");
+        sleep_ms(100);
+        return -1;
+    }
+
+    cyw43_arch_enable_sta_mode();
+
+    // Conexão à rede Wi-Fi
+    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
+        printf("WiFi => ERRO\n");
+        sleep_ms(100);
+        return -1;
+    }
+
+    // Exibe o endereço IP atribuído
+    uint8_t *ip = (uint8_t *)&(cyw43_state.netif[0].ip_addr.addr);
+    snprintf(ip_str, 16, "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+
+    printf("WiFi => Conectado com sucesso!\n IP: %s\n", ip_str);
+
+    return 0; // Retorna 0 para indicar sucesso
+}
+
+
 // HTML da interface web - Página completa com estilos CSS e JavaScript
 // Contém formulários para configurar limites e mostra status em tempo real
 const char HTML_BODY[] =

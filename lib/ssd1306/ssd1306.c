@@ -6,8 +6,6 @@
 #define I2C_SCL 15
 #define ENDERECO 0x3C 
 
-
-
 void init_display(ssd1306_t *ssd){
   // Inicialização do display
     i2c_init(I2C_PORT, 400 * 1000);

@@ -5,192 +5,263 @@
 #include "hardware/adc.h"
 #include <stdio.h>
 
-#include "botoes.h" // Biblioteca para controle dos botões
-#include "ssd1306.h" // Biblioteca para controle do display OLED -- FUNCIONALIDADE NÃO IMPLEMENTADA
-#include "matriz.h" // Biblioteca para controle da matriz de LEDs
-#include "potenciometro.h" // Biblioteca para controle do potenciômetro
-#include "web.h" // Biblioteca para controle da interface web
-#include "rgb.h" // Biblioteca para controle do Led RGB
-#include "buzzer.h" // Biblioteca para controle do buzzer
-
+#include "botoes.h"
+#include "ssd1306.h"
+#include "matriz.h"
+#include "potenciometro.h"
+#include "web.h"
+#include "rgb.h"
+#include "buzzer.h"
 
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
-#define WIFI_SSID "SSID"
-#define WIFI_PASS "SENHA"
+#define WIFI_SSID           "Casa1"
+#define WIFI_PASS           "40302010"
+#define NIVEL_MAXIMO        100
+#define NIVEL_MINIMO        10
+#define CAPACIDADE_TANQUE_ML 5000
+#define DEBOUNCE_US         200000
 
-int limite_maximo = 100;
-int limite_minimo = 10;
 absolute_time_t ultima_troca = {0};
 ssd1306_t ssd;
 volatile bool seguranca_ativa = false; 
-volatile bool enchendo = false; // Estado da bomba: true para enchendo
-volatile bool esvaziando = false; // Estado da bomba: true para esvaziando
-volatile bool bomba_ligada = false; // Estado da bomba: true para ligada, false para desligada
-int nivel_agua; // Variável global para armazenar o nível de água
-volatile bool modo=1; // Variavel para alternar o display entre informações do tanque e bomba e da conexão remota
-
+volatile bool enchendo = false;      // Estado da bomba: true para enchendo
+volatile bool esvaziando = false;    // Estado da bomba: true para esvaziando
+volatile bool bomba_ligada = false;  // Estado da bomba: true para ligada, false para desligada
+int nivel_agua;
+int limite_minimo = NIVEL_MINIMO;
+int limite_maximo = NIVEL_MAXIMO;                      // Variável global para armazenar o nível de água
+volatile bool modo_display = 1;      // Alterna o display entre informações do tanque/bomba e conexão remota
 
 // --- ASSINATURA DAS FUNÇÕES ---
 void gpio_irq_handler(uint gpio, uint32_t events);
 void seguranca_enchimento_automatico(void);
-void info_display(bool modo, char ip_str[]);
+void info_display(bool modo_display, char ip_str[]);
+void inicializar_perifericos(void);
+void atualizar_nivel_agua(void);
+void atualizar_feedback_bomba(void);
 
-// FUNÇÃO PRINCIPAL
+// --- FUNÇÃO PRINCIPAL ---
+/**
+ * Função principal do sistema.
+ * Inicializa periféricos, conecta ao Wi-Fi, inicializa webserver e executa o loop principal.
+ */
 int main() {
-    stdio_init_all();
-
-    init_botoes();
-    init_matriz();
-    init_potenciometro();
-    configurar_leds();
-    configurar_buzzer();
+    inicializar_perifericos();
 
     gpio_set_irq_enabled_with_callback(BOTAO_5, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     gpio_set_irq_enabled_with_callback(BOTAO_6, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
     gpio_set_irq_enabled_with_callback(BOTAO_JOYSTICK, GPIO_IRQ_EDGE_FALL, true, &gpio_irq_handler);
 
-    // Inicialização e configuração do Wi-Fi
-    if (cyw43_arch_init()) {
-        printf("WiFi => FALHA\n");
-        sleep_ms(100);
+    char ip_str[16];
+    if (inicializar_wifi(ip_str, WIFI_SSID, WIFI_PASS) != 0) {
+        sleep_ms(5000); // Espera 5 segundos antes de encerrar para dar tempo de conectar ao serial monitor
+        printf("Falha ao inicializar Wi-Fi. Encerrando...\n");
         return -1;
     }
 
-    cyw43_arch_enable_sta_mode();
-
-    // Conexão à rede Wi-Fi
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASS, CYW43_AUTH_WPA2_AES_PSK, 10000)) {
-        printf("WiFi => ERRO\n");
-        sleep_ms(100);
-        return -1;
-    }
-
-    // Exibe o endereço IP atribuído
-    uint8_t *ip = (uint8_t *)&(cyw43_state.netif[0].ip_addr.addr);
-    char ip_str[24];
-    snprintf(ip_str, sizeof(ip_str), "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-
-    printf("WiFi => Conectado com sucesso!\n IP: %s\n", ip_str);
-
-    init_web(); // Inicializa o servidor web
-    init_display(&ssd); // Inicializa o display
+    init_web();
 
     while (true) {
-        read_potenciometro(); // Atualiza adc_value_x
-        
-        nivel_agua = adc_value_x; // Lê o valor do ADC
-        nivel_agua = (nivel_agua * 100) / 4095; // Converte para porcentagem (0-100)
-        
+        atualizar_nivel_agua();
+        atualizar_feedback_bomba();
         seguranca_enchimento_automatico();
         matriz_atualizar_tanque(nivel_agua, limite_maximo);
-        
         cyw43_arch_poll();
-            
-        printf("[DEBUG] Nível de água: %d\n", nivel_agua);
-        sleep_ms(500);
-            if (nivel_agua < limite_minimo) {
-            set_rgb(true, false, false);
-            tocar_buzzer_alerta();
-            enchendo = true;
-            esvaziando = false;
-        }
-        else if (nivel_agua > limite_maximo) {
-            set_rgb(true, false, false);
-            tocar_buzzer_alerta();
-            enchendo = false;
-            esvaziando = true;
-        }
-        else if (enchendo || esvaziando) {
-            piscar_amarelo_com_bipe(); 
-        }
-        else {
-            set_rgb(false, true, false);
-            parar_buzzer();
-        }
-        info_display(modo, ip_str);
-
-        sleep_ms(300);
+        info_display(modo_display, ip_str);
+        sleep_ms(100);
     }
 
     cyw43_arch_deinit();
     return 0;
 }
 
-// --- IMPLEMENTAÇÃO DAS FUNÇÕES ---
+// --- FUNÇÕES AUXILIARES ---
+/**
+ * Inicializa todos os periféricos do sistema:
+ * botões, matriz de LEDs, potenciômetro, display OLED, LEDs RGB e buzzer.
+ */
+void inicializar_perifericos(void) {
+    stdio_init_all();
+    init_botoes();
+    init_matriz();
+    init_potenciometro();
+    configurar_leds();
+    configurar_buzzer();
+    init_display(&ssd);
+}
 
-// Handler de interrupção dos botões
-void gpio_irq_handler(uint gpio, uint32_t events) {
-    if (seguranca_ativa) {
-        // Ignora interrupções enquanto a segurança está ativa
-        return;
+/**
+ * Lê o valor do potenciômetro e atualiza a variável global nivel_agua.
+ * O valor é convertido para uma escala de 0 a 100 (%).
+ */
+void atualizar_nivel_agua(void) {
+    read_potenciometro();
+    nivel_agua = adc_value_x;
+    nivel_agua = (nivel_agua * 100) / 4095;
+}
+
+/**
+ * Atualiza o estado da bomba com base no nível de água e nos botões pressionados.
+ * Controla o LED RGB, buzzer e matriz de LEDs conforme o estado do sistema.
+ */
+void atualizar_feedback_bomba(void) {
+    // Controle de limites de nível de água
+    if (nivel_agua < limite_minimo || nivel_agua > limite_maximo) {
+            parar_buzzer();
+            set_rgb(true, false, false);
+            tocar_buzzer_alerta();
     }
+    // Se estiver enchendo ou esvaziando, pisca LED amarelo com bip
+    else if (esvaziando || enchendo) {
+        parar_buzzer();
+        piscar_amarelo_com_bipe();
+    }
+    // Se não tudo está normal
+    else {
+        parar_buzzer();
+        set_rgb(false, true, false);
+    }
+}
+
+/**
+ * Handler de interrupção dos botões.
+ * Realiza debounce e alterna modos ou aciona/desliga bomba conforme o botão pressionado.
+ */
+void gpio_irq_handler(uint gpio, uint32_t events) {
     absolute_time_t agora = get_absolute_time();
-    if (absolute_time_diff_us(ultima_troca, agora) > 200000) {
-        // Controle para ENCHER: só permite se não estiver esvaziando e não atingiu o nível máximo
-        if (gpio == BOTAO_JOYSTICK){ // Alterna modo do display
-            modo = !modo;
-            ultima_troca = agora;
-        } 
+    if (absolute_time_diff_us(ultima_troca, agora) > DEBOUNCE_US) {
+        if (gpio == BOTAO_JOYSTICK) { // Alterna modo do display
+            modo_display = !modo_display;
+        }
+        if (seguranca_ativa) {
+            // Ignora interrupções que controlam as bombas enquanto a segurança está ativa
+            return;
+        }
         if (gpio == BOTAO_5 && !esvaziando && nivel_agua < limite_maximo) {
-            gerar_onda_A();
             enchendo = !enchendo;
             bomba_ligada = !bomba_ligada;
-            ultima_troca = agora;
+            gerar_onda_A();
         }
-        // Controle para ESVAZIAR: só permite se não estiver enchendo e não atingiu o nível mínimo
         else if (gpio == BOTAO_6 && !enchendo && nivel_agua > limite_minimo) {
-            gerar_onda_B();
             esvaziando = !esvaziando;
             bomba_ligada = !bomba_ligada;
-            ultima_troca = agora;
+            gerar_onda_B();
         }
-        // Se não pode acionar, apenas ignora o comando
+        ultima_troca = agora;
     }
 }
 
-// Função de segurança: enche automaticamente se o nível cair abaixo do mínimo
+/**
+ * Função de segurança: enche automaticamente se o nível cair abaixo do mínimo.
+ * Desliga a bomba ao atingir o nível mínimo ou máximo.
+ */
 void seguranca_enchimento_automatico(void) {
     if (nivel_agua < limite_minimo && !enchendo) {
-        enchendo = true;
-        bomba_ligada = true;
-        seguranca_ativa = true;
-        gerar_onda_A(); // Liga a bomba
+        if (esvaziando) {
+            esvaziando = false; // Desliga a bomba de esvaziamento se estava esvaziando
+            gerar_onda_B(); // Desliga a bomba de esvaziamento
+        }
+        else{
+            enchendo = true;
+            bomba_ligada = true;
+            seguranca_ativa = true;
+            gerar_onda_A(); // Liga a bomba de encher
+        }
     }
-    // Para a bomba quando atingir o mínimo desejado
-    else if (nivel_agua >= limite_minimo && enchendo) {
-        enchendo = false;
-        bomba_ligada = false;
-        seguranca_ativa = false;
-        gerar_onda_A(); // Desliga a bomba
+    else if (nivel_agua > limite_maximo && !esvaziando) {
+        if(enchendo){
+            enchendo = false; // Desliga a bomba de encher se estava enchendo
+            gerar_onda_A(); // Desliga a bomba de encher
+        }
+        else{
+            esvaziando = true;
+            bomba_ligada = true;
+            seguranca_ativa = true;
+            gerar_onda_B(); // Liga a bomba de esvaziamento
+        }
+    }
+
+    if(seguranca_ativa){
+        if (nivel_agua >= limite_minimo && enchendo) {
+            enchendo = false;
+            bomba_ligada = false;
+            seguranca_ativa = false;
+            gerar_onda_A(); // Desliga a bomba de encher quando atinge o nível mínimo novamente
+        }
+        else if (nivel_agua <= limite_maximo && esvaziando) {
+            esvaziando = false;
+            bomba_ligada = false;
+            seguranca_ativa = false;
+            gerar_onda_B(); // Desliga a bomba de esvaziamento quando atinge o nível máximo novamente
+        }
     }
 }
 
-void info_display(bool modo, char ip_str[]){
+/**
+ * Atualiza o display OLED com informações do sistema.
+ * Se modo_display == 0, mostra status da bomba e nível de água.
+ * Se modo_display == 1, mostra status do Wi-Fi e IP.
+ */
+void info_display(bool modo_display, char ip_str[]) {
+    if (modo_display == 0) { // Infos da bomba
+        char buffer[32];
+        bool cor = true;
+        ssd1306_fill(&ssd, false);
 
-    if (modo == 0){ // Infos da bomba
-        char bomba_string[15];
-        char nivel_string[15];
-        char litros_string[15];
-        if (bomba_ligada){
-            sprintf(bomba_string, "BOMBA       ON");
-        }
-        else{
-            sprintf(bomba_string, "BOMBA      OFF");
-        }
+        // Moldura principal
+        ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);
 
-        sprintf(nivel_string, "NIVEL     %3d%%", nivel_agua);
-        sprintf(litros_string, "%d/5000 ml", nivel_agua*50);
-        ssd1306_fill(&ssd, 0);
-        ssd1306_draw_string(&ssd, bomba_string, 5, 8);
-        ssd1306_draw_string(&ssd, nivel_string, 5, 24);
-        ssd1306_draw_string(&ssd, litros_string, 5, 40);
+        // Linhas horizontais para separar as seções
+        ssd1306_line(&ssd, 3, 25, 123, 25, cor); // Linha superior
+        ssd1306_line(&ssd, 3, 37, 123, 37, cor); // Linha intermediária
+
+        // Linhas verticais para separar colunas
+        ssd1306_line(&ssd, 23, 38, 23, 60, cor); // Entre status e nível
+        ssd1306_line(&ssd, 85, 38, 85, 60, cor); // Entre nível e litros
+
+        // Título centralizado
+        ssd1306_draw_string(&ssd, "CEPEDI  TIC37", 8, 6);
+        ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16);
+
+        // Status da bomba (centralizado na primeira coluna)
+        if (bomba_ligada) {
+            snprintf(buffer, sizeof(buffer), "ON");
+        } else {
+            snprintf(buffer, sizeof(buffer), "OFF");
+        }
+        ssd1306_draw_string(&ssd, " BOMBA - ", 10, 28);
+        ssd1306_draw_string(&ssd, buffer, 10, 65);
+
+        // Nível em % (centralizado na segunda coluna)
+        snprintf(buffer, sizeof(buffer), "%3d%%", nivel_agua);
+        ssd1306_draw_string(&ssd, "NIVEL", 35, 45);
+        ssd1306_draw_string(&ssd, buffer, 40, 53);
+
+        // Volume em ml (centralizado na terceira coluna)
+        snprintf(buffer, sizeof(buffer), "%dml", nivel_agua * (CAPACIDADE_TANQUE_ML / 100));
+        ssd1306_draw_string(&ssd, "VOLUME", 90, 45);
+        ssd1306_draw_string(&ssd, buffer, 95, 53);
+
         ssd1306_send_data(&ssd);
     }
     else { // Infos do wifi
-        ssd1306_fill(&ssd, 0);
-        ssd1306_draw_string(&ssd, "WIFI ON", 5, 32);
-        ssd1306_draw_string(&ssd, ip_str, 5, 40);
-        ssd1306_send_data(&ssd);
-    }
 
+        char buffer[32]; // Buffer para armazenar as strings que serão desenhadas no display
+        bool cor = true; // Cor do texto (true para branco, false para preto)
+        ssd1306_fill(&ssd, false); // Limpa o display com fundo preto
+
+        ssd1306_rect(&ssd, 3, 3, 122, 60, cor, !cor);      // Desenha um retângulo
+        ssd1306_line(&ssd, 3, 25, 123, 25, cor);           // Desenha uma linha
+        ssd1306_line(&ssd, 3, 37, 123, 37, cor);           // Desenha uma linha
+        ssd1306_line(&ssd, 23, 38, 23, 60, cor);           // Desenha uma linha vertical
+
+        ssd1306_draw_string(&ssd, "CEPEDI  TIC37", 8, 6);
+        ssd1306_draw_string(&ssd, "EMBARCATECH", 20, 16);
+        ssd1306_draw_string(&ssd, "  WIFI - ON", 10, 28);
+        ssd1306_draw_string(&ssd, "IP", 5, 45);
+        snprintf(buffer, sizeof(buffer), "%s", ip_str);
+        ssd1306_draw_string(&ssd, buffer, 26, 45);
+
+        ssd1306_send_data(&ssd);    // Envia os dados para o display OLED
+    }
 }

@@ -14,8 +14,8 @@
 #include "buzzer.h"
 
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
-#define WIFI_SSID           "Gama"
-#define WIFI_PASS           "pati2081"
+#define WIFI_SSID           "WIFI"
+#define WIFI_PASS           "SENHA"
 #define NIVEL_MAXIMO        100
 #define NIVEL_MINIMO        10
 #define CAPACIDADE_TANQUE_ML 5000

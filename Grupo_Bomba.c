@@ -16,8 +16,8 @@
 // --- DEFINES E VARIÁVEIS GLOBAIS ---
 #define WIFI_SSID           "WIFI"
 #define WIFI_PASS           "SENHA"
-#define NIVEL_MAXIMO        100
-#define NIVEL_MINIMO        10
+#define NIVEL_MAXIMO        80
+#define NIVEL_MINIMO        0
 #define CAPACIDADE_TANQUE_ML 5000
 #define DEBOUNCE_US         200000
 
